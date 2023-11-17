@@ -30,10 +30,3 @@ func TimeHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		ReplyMarkup: kb,
 	})
 }
-
-func onInlineKeyboardSelect(ctx context.Context, b *bot.Bot, mes *models.Message, data []byte) {
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: mes.Chat.ID,
-		Text:   "You selected: " + string(data),
-	})
-}
