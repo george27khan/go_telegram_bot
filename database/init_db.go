@@ -1,0 +1,100 @@
+package database
+
+import (
+	"context"
+	"fmt"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/tern/v2/migrate"
+	"github.com/joho/godotenv"
+	"log"
+	"os"
+	"sync"
+)
+
+func getPGconnStr() (connStr string) {
+	// loads DB settings from .env into the system
+	if err := godotenv.Load("./db.env"); err != nil {
+		log.Print("No .env file found")
+	}
+	dbName := os.Getenv("POSTGRES_DB")
+	dbUser := os.Getenv("POSTGRES_USER")
+	dbPwd := os.Getenv("POSTGRES_PASSWORD")
+
+	//"postgres://username:password@localhost:5432/database_name"
+	connStr = fmt.Sprintf("postgres://%s:%s@localhost:5432/%s", dbUser, dbPwd, dbName)
+	return
+}
+
+var (
+	pgOnce sync.Once
+)
+
+func Pool(ctx context.Context) (pool *pgxpool.Pool, err error) {
+	pgOnce.Do(func() {
+		pool, err = pgxpool.New(ctx, getPGconnStr())
+	})
+	return pool, err
+}
+
+func Connect(ctx context.Context) *pgx.Conn {
+	conn, err := pgx.Connect(ctx, getPGconnStr())
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		os.Exit(1)
+	}
+	return conn
+}
+
+func getMigrator(ctx context.Context, conn *pgx.Conn) *migrate.Migrator {
+	migrator, err := migrate.NewMigrator(ctx, conn, "go_bot")
+	if err != nil {
+		fmt.Printf("Unable to create a migrator: %v\n", err)
+	}
+
+	err = migrator.LoadMigrations(os.DirFS("./database/migration"))
+	if err != nil {
+		fmt.Printf("Unable to load migrations: %v\n", err)
+	}
+	return migrator
+}
+
+func InitDB() {
+	ctx := context.Background()
+	conn := Connect(ctx)
+	defer conn.Close(ctx)
+
+	migrator := getMigrator(ctx, conn)
+
+	err := migrator.Migrate(ctx)
+	if err != nil {
+		fmt.Printf("Unable to migrate: %v\n", err)
+	}
+
+	ver, err := migrator.GetCurrentVersion(ctx)
+	if err != nil {
+		fmt.Printf("Unable to get current schema version: %v\n", err)
+	}
+
+	fmt.Printf("Migration done. Current schema version: %v\n", ver)
+}
+
+func DropDB() {
+	ctx := context.Background()
+	conn := Connect(ctx)
+	defer conn.Close(ctx)
+
+	migrator := getMigrator(ctx, conn)
+
+	err := migrator.MigrateTo(ctx, 0)
+	if err != nil {
+		fmt.Printf("Unable to migrate: %v\n", err)
+	}
+
+	ver, err := migrator.GetCurrentVersion(ctx)
+	if err != nil {
+		fmt.Printf("Unable to get current schema version: %v\n", err)
+	}
+
+	fmt.Printf("Migration done. Current schema version: %v\n", ver)
+}

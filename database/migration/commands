@@ -1,0 +1,3 @@
+tern migrate
+tern migrate --destination -1
+tern new create_table_employee
