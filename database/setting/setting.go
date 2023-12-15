@@ -10,11 +10,12 @@ import (
 )
 
 var (
-	settingList        map[string]interface{}
-	SessionTimeHour    float64
-	TimeKeyboarWidth   int
-	StartHourScheduler map[string]float64
-	EndHourScheduler   map[string]float64
+	settingList       map[string]interface{}
+	SessionTimeHour   float64
+	TimeKeyboarWidth  int
+	DaysInSchedule    int
+	StartHourSchedule map[string]float64
+	EndHourSchedule   map[string]float64
 )
 
 func GetNumberVal(ctx context.Context, pool *pgxpool.Pool, setting_code string) (float64, error) {
@@ -82,20 +83,27 @@ func LoadSettings(ctx context.Context) bool {
 	} else {
 		TimeKeyboarWidth = int(val)
 	}
-	if jsonVal, err = GetJSONVal(ctx, pool, "start_hour_scheduler"); err != nil {
-		fmt.Println("Error load start_hour_scheduler")
+	if val, err := GetNumberVal(ctx, pool, "days_in_schedule"); err != nil {
+		fmt.Println("Error load days_in_schedule")
 		ok = false
 	} else {
-		if err := json.Unmarshal(jsonVal, &StartHourScheduler); err != nil {
-			fmt.Println("Error load start_hour_scheduler")
+		DaysInSchedule = int(val)
+	}
+
+	if jsonVal, err = GetJSONVal(ctx, pool, "start_hour_schedule"); err != nil {
+		fmt.Println("Error load start_hour_schedule")
+		ok = false
+	} else {
+		if err := json.Unmarshal(jsonVal, &StartHourSchedule); err != nil {
+			fmt.Println("Error load start_hour_schedule")
 		}
 	}
-	if jsonVal, err = GetJSONVal(ctx, pool, "end_hour_scheduler"); err != nil {
-		fmt.Println("Error load end_hour_scheduler")
+	if jsonVal, err = GetJSONVal(ctx, pool, "end_hour_schedule"); err != nil {
+		fmt.Println("Error load end_hour_schedule")
 		ok = false
 	} else {
-		if err := json.Unmarshal(jsonVal, &EndHourScheduler); err != nil {
-			fmt.Println("Error load start_hour_scheduler")
+		if err := json.Unmarshal(jsonVal, &EndHourSchedule); err != nil {
+			fmt.Println("Error load start_hour_schedule")
 		}
 	}
 	return ok

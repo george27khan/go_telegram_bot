@@ -30,11 +30,8 @@ var (
 	pgOnce sync.Once
 )
 
-func Pool(ctx context.Context) (pool *pgxpool.Pool, err error) {
-	pgOnce.Do(func() {
-		pool, err = pgxpool.New(ctx, getPGconnStr())
-	})
-	return pool, err
+func Pool(ctx context.Context) (*pgxpool.Pool, error) {
+	return pgxpool.New(ctx, getPGconnStr())
 }
 
 func Connect(ctx context.Context) *pgx.Conn {
