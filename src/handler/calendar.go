@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/go-telegram/ui/datepicker"
@@ -79,8 +78,6 @@ func TimeAnswerHandler(ctx context.Context, b *bot.Bot, mes *models.Message, dat
 	if schedTime, err := time.Parse(datetimeFormat, string(data)); err != nil {
 		sendMsg = highlightTxt("В процессе записи произошла ощибка: " + err.Error())
 	} else {
-		fmt.Println("eeeeeeeeeeeeeeeeeeeee ", mes.Chat.ID)
-
 		if err := schdlr.InsertSchedule(ctx, mes.Chat.ID, schedTime); err != nil {
 			sendMsg = highlightTxt("В процессе записи произошла ощибка: " + err.Error())
 		} else {
