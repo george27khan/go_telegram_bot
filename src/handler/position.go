@@ -7,14 +7,13 @@ import (
 	"github.com/go-telegram/bot/models"
 	"github.com/go-telegram/ui/keyboard/inline"
 	pstn "go_telegram_bot/database/position"
-	redis "go_telegram_bot/database/redis"
 	"go_telegram_bot/src/state"
 	"strconv"
 	"strings"
 )
 
-// positionHandler функция вывода настроек должностей
-func positionHandler(ctx context.Context, b *bot.Bot, mes *models.Message, data []byte) {
+// positionSettingHandler функция вывода настроек должностей
+func positionSettingHandler(ctx context.Context, b *bot.Bot, mes *models.Message, data []byte) {
 	kb := inline.New(b).
 		Row().
 		Button("Добавить должность", []byte(""), positionAddHandler).
@@ -51,7 +50,7 @@ func positionDelHandler(ctx context.Context, b *bot.Bot, mes *models.Message, da
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      mes.Chat.ID,
 		Text:        highlightTxt("Выберите должность на удаления"),
-		ReplyMarkup: positionNameKB(ctx, b, delPosition),
+		ReplyMarkup: positionNameKB(ctx, b, delPosition).Row().Button("Назад", []byte(""), positionSettingHandler),
 		ParseMode:   models.ParseModeHTML,
 	})
 }
@@ -86,14 +85,13 @@ func delPosition(ctx context.Context, b *bot.Bot, mes *models.Message, data []by
 
 // positionAddHandler функция запроса создания новой должности
 func positionAddHandler(ctx context.Context, b *bot.Bot, mes *models.Message, data []byte) {
-	rdb := redis.Connect()
-	defer rdb.Close()
-	_ = rdb.HSet(ctx, "user_state", map[string]interface{}{strconv.FormatInt(mes.Chat.ID, 10): "PositionAddHandler"})
+	state.Set(ctx, "user_state", strconv.FormatInt(mes.Chat.ID, 10), "PositionAddHandler")
 	positions, _ := pstn.SelectAllStr(ctx)
 	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    mes.Chat.ID,
-		Text:      highlightTxt("Введите новое название должности НЕ из списка:" + "\n" + strings.Join(positions, "\n")),
-		ParseMode: models.ParseModeHTML,
+		ChatID:      mes.Chat.ID,
+		Text:        highlightTxt("Введите новое название должности НЕ из списка:" + "\n" + strings.Join(positions, "\n")),
+		ReplyMarkup: inline.New(b).Button("Назад", []byte(""), positionSettingHandler),
+		ParseMode:   models.ParseModeHTML,
 	})
 }
 
@@ -117,19 +115,11 @@ func addPosition(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 // positionShowHandler функция для вывода существующих должностей
 func positionShowHandler(ctx context.Context, b *bot.Bot, mes *models.Message, data []byte) {
-	rdb := redis.Connect()
-	defer rdb.Close()
-	_ = rdb.HSet(ctx, "user_state", map[string]interface{}{strconv.FormatInt(mes.Chat.ID, 10): "PositionNameHandler"})
 	positions, _ := pstn.SelectAllStr(ctx)
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      mes.Chat.ID,
 		Text:        highlightTxt("Список должностей:" + "\n" + strings.Join(positions, "\n")),
-		ReplyMarkup: inline.New(b).Button("Назад", []byte(""), backPositionHandler),
+		ReplyMarkup: inline.New(b).Button("Назад", []byte(""), positionSettingHandler),
 		ParseMode:   models.ParseModeHTML,
 	})
-}
-
-// backPositionHandler функция возврата в меню должностей
-func backPositionHandler(ctx context.Context, b *bot.Bot, mes *models.Message, data []byte) {
-	positionHandler(ctx, b, mes, data)
 }

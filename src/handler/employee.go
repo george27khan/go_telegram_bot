@@ -6,6 +6,7 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/go-telegram/ui/keyboard/inline"
+	"github.com/go-telegram/ui/slider"
 	emp "go_telegram_bot/database/employee"
 	pstn "go_telegram_bot/database/position"
 	"go_telegram_bot/src/state"
@@ -22,21 +23,24 @@ var (
 		"employeeEmailAdd":       "Введите email сотрудника",
 		"employeePhoneNumberAdd": "Введите номер телефона сотрудника",
 		"employeeHireDateAdd":    "Введите дату приема сотрудника",
+		"employeePhotoAdd":       "Приложите фото",
 		"empPositionAdd":         "Выберите должность сотрудника",
 	}
 )
 
 // EmpSettingHandler функция для формирования настроек сотрудников
-func EmpSettingHandler(ctx context.Context, b *bot.Bot, mes *models.Message, data []byte) {
+func empSettingHandler(ctx context.Context, b *bot.Bot, mes *models.Message, _ []byte) {
 	kb := inline.New(b).
 		Row().
 		Button("Добавить сотрудника", []byte(""), empAddStart).
 		Row().
 		Button("Удалить сотрудника", []byte(""), empDeleteStart).
 		Row().
+		Button("Вывести сотрудников", []byte(""), empShowHandler).
+		Row().
 		Button("Назад", []byte(""), BackSettingHandler)
 
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      mes.Chat.ID,
 		Text:        highlightTxt("Выберите действие"),
 		ReplyMarkup: kb,
@@ -45,14 +49,14 @@ func EmpSettingHandler(ctx context.Context, b *bot.Bot, mes *models.Message, dat
 }
 
 // empAddStart функция для начала процесса создания сотрудника
-func empAddStart(ctx context.Context, b *bot.Bot, mes *models.Message, data []byte) {
+func empAddStart(ctx context.Context, b *bot.Bot, mes *models.Message, _ []byte) {
 	empAddAttr(ctx, b, mes, "employeeFirstNameAdd")
 }
 
 // empAddAttr функция для смены промежуточного состояния процесса создания сотрудника
 func empAddAttr(ctx context.Context, b *bot.Bot, mes *models.Message, empState string) {
 	state.Set(ctx, "user_state", strconv.FormatInt(mes.Chat.ID, 10), empState)
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    mes.Chat.ID,
 		Text:      highlightTxt(empText[empState]),
 		ParseMode: models.ParseModeHTML,
@@ -62,7 +66,7 @@ func empAddAttr(ctx context.Context, b *bot.Bot, mes *models.Message, empState s
 // empPositionAdd функция формирования клавиатуры выбора должности сотрудника со сменой состония
 func empPositionAdd(ctx context.Context, b *bot.Bot, mes *models.Message, empState string) {
 	state.Set(ctx, "user_state", strconv.Itoa(mes.ID), empState)
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      mes.Chat.ID,
 		Text:        highlightTxt(empText[empState]),
 		ReplyMarkup: positionNameKB(ctx, b, ChoosePosition),
@@ -80,7 +84,7 @@ func ChoosePosition(ctx context.Context, b *bot.Bot, mes *models.Message, data [
 		empCash[mes.Chat.ID].Position = position
 	} else {
 		res = "❌ Ошибка в процессе выбора должности: " + err.Error()
-		b.SendMessage(ctx, &bot.SendMessageParams{
+		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID:    mes.Chat.ID,
 			Text:      highlightTxt(res),
 			ParseMode: models.ParseModeHTML,
@@ -91,12 +95,12 @@ func ChoosePosition(ctx context.Context, b *bot.Bot, mes *models.Message, data [
 	} else {
 		res = "✅ Сотрудник успешно добавлен!"
 	}
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    mes.Chat.ID,
 		Text:      highlightTxt(res),
 		ParseMode: models.ParseModeHTML,
 	})
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      mes.Chat.ID,
 		Text:        highlightTxt("Выберите действие"),
 		ReplyMarkup: menuKeyboard(b),
@@ -118,11 +122,11 @@ func empKB(ctx context.Context, b *bot.Bot, action func(context.Context, *bot.Bo
 }
 
 // empDeleteStart функция для вывода списка сотрудников для удаления
-func empDeleteStart(ctx context.Context, b *bot.Bot, mes *models.Message, data []byte) {
-	b.SendMessage(ctx, &bot.SendMessageParams{
+func empDeleteStart(ctx context.Context, b *bot.Bot, mes *models.Message, _ []byte) {
+	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      mes.Chat.ID,
-		Text:        highlightTxt("Выберите должность на удаления"),
-		ReplyMarkup: empKB(ctx, b, empDelete),
+		Text:        highlightTxt("Выберите сотрудника на удаления"),
+		ReplyMarkup: empKB(ctx, b, empDelete).Row().Button("Назад", []byte(""), empSettingHandler),
 		ParseMode:   models.ParseModeHTML,
 	})
 }
@@ -141,16 +145,58 @@ func empDelete(ctx context.Context, b *bot.Bot, mes *models.Message, data []byte
 	} else {
 		res = "✅ Сотрудник удален"
 	}
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    mes.Chat.ID,
 		Text:      highlightTxt(res),
 		ParseMode: models.ParseModeHTML,
 	})
 
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      mes.Chat.ID,
 		Text:        highlightTxt("Выберите действие"),
 		ReplyMarkup: menuKeyboard(b),
 		ParseMode:   models.ParseModeHTML,
 	})
+}
+
+// empShowHandler функция для вывода существующих сотрудников
+func empShowHandler(ctx context.Context, b *bot.Bot, mes *models.Message, _ []byte) {
+	slides, err := getEmpSlides(ctx)
+	if err != nil {
+		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID:      mes.Chat.ID,
+			Text:        highlightTxt("Ошибка в процессе формирования списка сотрудников!"),
+			ReplyMarkup: inline.New(b).Button("Назад", []byte(""), empSettingHandler),
+			ParseMode:   models.ParseModeHTML,
+		})
+	}
+	opts := []slider.Option{
+		//slider.OnSelect("Select", true, sliderOnSelect),
+		slider.OnCancel("Назад", true, sliderOnCancel),
+	}
+	sl := slider.New(slides, opts...)
+	m, err := sl.Show(ctx, b, mes.Chat.ID)
+	fmt.Println(m, err)
+}
+
+// getEmpSlides функция для формирования клавиатуры слайдов
+func getEmpSlides(ctx context.Context) ([]slider.Slide, error) {
+	var slides []slider.Slide
+	employees, err := emp.SelectAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, employee := range employees {
+		slides = append(slides, slider.Slide{
+			Photo:    string(employee.Photo),
+			IsUpload: true,
+			Text:     employee.MiddleName + " " + employee.FirstName + " " + employee.LastName,
+		})
+	}
+	return slides, nil
+}
+
+// sliderOnCancel функция возврата в настройки
+func sliderOnCancel(ctx context.Context, b *bot.Bot, mes *models.Message) {
+	empSettingHandler(ctx, b, mes, []byte(""))
 }

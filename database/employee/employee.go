@@ -20,6 +20,7 @@ type Employee struct {
 	PhoneNumber string
 	Position    pstn.Position
 	HireDate    time.Time
+	Photo       []byte
 }
 
 // Insert функция для добавление записи в таблицу
@@ -29,7 +30,7 @@ func (e *Employee) Insert(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	query := "INSERT INTO go_bot.employee(first_name, middle_name, last_name, birth_date, email, phone_number, id_position, hire_date) VALUES (@first_name, @middle_name, @last_name, @birth_date, @email, @phone_number, @id_position, @hire_date)"
+	query := "INSERT INTO go_bot.employee(first_name, middle_name, last_name, birth_date, email, phone_number, id_position, hire_date, photo) VALUES (@first_name, @middle_name, @last_name, @birth_date, @email, @phone_number, @id_position, @hire_date, @photo)"
 
 	args := pgx.NamedArgs{
 		"first_name":   e.FirstName,
@@ -40,6 +41,7 @@ func (e *Employee) Insert(ctx context.Context) error {
 		"phone_number": e.PhoneNumber,
 		"id_position":  e.Position.Id,
 		"hire_date":    e.HireDate,
+		"photo":        e.Photo,
 	}
 	if res, err := pool.Exec(ctx, query, args); err != nil {
 		fmt.Println(err)
@@ -69,31 +71,42 @@ func (e *Employee) Delete(ctx context.Context) error {
 // SelectAll функция для получения всех записей из таблицы в виде среза элементов типа Employee
 func SelectAll(ctx context.Context) ([]Employee, error) {
 	var (
-		employee    Employee
-		employees   []Employee
-		id_position int
+		employee  Employee
+		employees []Employee
+		idPos     int
 	)
 	pool, err := db.Pool(ctx)
 	defer pool.Close()
 	if err != nil {
 		return nil, err
 	}
-	query := "select id, first_name, middle_name, last_name, birth_date, email, phone_number, id_position, hire_date from go_bot.employee t"
+	query := "select id, first_name, middle_name, last_name, birth_date, email, phone_number, id_position, hire_date, photo from go_bot.employee t"
 	rows, err := pool.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		if err := rows.Scan(&employee.Id, &employee.FirstName, &employee.MiddleName, &employee.LastName, &employee.BirthDate, &employee.Email, &employee.PhoneNumber, &id_position, &employee.HireDate); err != nil {
+		if err := rows.Scan(&employee.Id, &employee.FirstName, &employee.MiddleName, &employee.LastName, &employee.BirthDate, &employee.Email, &employee.PhoneNumber, &idPos, &employee.HireDate, &employee.Photo); err != nil {
 			return nil, err
 		}
-		if employee.Position, err = pstn.Get(ctx, id_position); err != nil {
+		if employee.Position, err = pstn.Get(ctx, idPos); err != nil {
 			return nil, err
 		}
 		employees = append(employees, employee)
 	}
 	return employees, nil
+}
+
+func SelectAllStr(ctx context.Context) (res []string, err error) {
+	emloyees, err := SelectAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, empl := range emloyees {
+		res = append(res, empl.MiddleName+" "+empl.FirstName+" "+empl.LastName)
+	}
+	return res, nil
 }
 
 // DeleteById удаление записи из таблицы по id

@@ -9,13 +9,15 @@ import (
 	emp "go_telegram_bot/database/employee"
 	usr "go_telegram_bot/database/user"
 	"go_telegram_bot/src/state"
+	"io"
+	"net/http"
 	"net/mail"
 	"strconv"
 	"time"
 )
 
 const dateFormat string = "02.01.2006"
-
+const fileDownloadURL string = "https://api.telegram.org/file/bot%s/%s" //https://api.telegram.org/file/bot<token>/<file_path>
 var (
 	lang    string // язык для чата
 	empCash = map[int64]*emp.Employee{}
@@ -29,7 +31,7 @@ func menuKeyboard(b *bot.Bot) *inline.Keyboard {
 		Row().
 		Button("⚙️ Настройки", []byte(""), settingHandler).
 		Row().
-		Button("Cancel", []byte(""), cancelHandler)
+		Button("Выход", []byte(""), cancelHandler)
 }
 
 // highlightTxt функция выделения текста сообщения телеграмм
@@ -57,12 +59,12 @@ func StartHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 }
 
 // settingHandler функция вывода меню настроек
-func settingHandler(ctx context.Context, b *bot.Bot, mes *models.Message, data []byte) {
+func settingHandler(ctx context.Context, b *bot.Bot, mes *models.Message, _ []byte) {
 	kb := inline.New(b).
 		Row().
-		Button("Должность", []byte(""), positionHandler).
+		Button("Должность", []byte(""), positionSettingHandler).
 		Row().
-		Button("Сотрудник", []byte(""), EmpSettingHandler).
+		Button("Сотрудник", []byte(""), empSettingHandler).
 		Row().
 		Button("Назад", []byte(""), BackStartHandler)
 
@@ -74,11 +76,29 @@ func settingHandler(ctx context.Context, b *bot.Bot, mes *models.Message, data [
 	})
 }
 
+func downloadFile(URL string) ([]byte, error) {
+	//Get the response bytes from the url
+	var bytes []byte
+	response, err := http.Get(URL)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+	if response.StatusCode == http.StatusOK {
+		bytes, err = io.ReadAll(response.Body)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return bytes, nil
+}
+
 // DefaultHandler процедура для обработки произвольного сообщения пользователя по текущему состоянию
 func DefaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	userIdStr := strconv.FormatInt(update.Message.From.ID, 10)
 	userId := update.Message.From.ID
 	res := state.Get(ctx, "user_state", userIdStr)
+	fmt.Println(res)
 	if res == "PositionAddHandler" {
 		addPosition(ctx, b, update)
 	} else if res == "employeeFirstNameAdd" {
@@ -94,7 +114,7 @@ func DefaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		empAddAttr(ctx, b, update.Message, "employeeBirthDateAdd")
 	} else if res == "employeeBirthDateAdd" {
 		if date, err := time.Parse(dateFormat, update.Message.Text); err == nil {
-			empCash[userId].BithDate = date
+			empCash[userId].BirthDate = date
 			empAddAttr(ctx, b, update.Message, "employeeEmailAdd")
 		} else {
 			empAddAttr(ctx, b, update.Message, "employeeBirthDateAdd")
@@ -113,8 +133,32 @@ func DefaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		}
 	} else if res == "employeePhoneNumberAdd" {
 		empCash[userId].PhoneNumber = update.Message.Text
-		empAddAttr(ctx, b, update.Message, "employeeHireDateAdd")
-
+		empAddAttr(ctx, b, update.Message, "employeePhotoAdd")
+	} else if res == "employeePhotoAdd" {
+		var (
+			fileId string
+			url    string
+		)
+		if update.Message.Document != nil && update.Message.Document.MimeType == "image/jpeg" {
+			fileId = update.Message.Document.FileID
+		} else if update.Message.Photo != nil {
+			fileId = update.Message.Photo[len(update.Message.Photo)-1].FileID
+		}
+		if fileId != "" {
+			if file, err := b.GetFile(ctx, &bot.GetFileParams{FileID: fileId}); err == nil {
+				url = fmt.Sprintf(fileDownloadURL, "5844620699:AAGbEPIFWKxTDr0jR_A77Rba95jtZBSQlGM", file.FilePath)
+				if photo, err := downloadFile(url); err == nil {
+					empCash[userId].Photo = photo
+					empAddAttr(ctx, b, update.Message, "employeeHireDateAdd")
+				} else {
+					empAddAttr(ctx, b, update.Message, "employeePhotoAdd")
+				}
+			} else {
+				empAddAttr(ctx, b, update.Message, "employeePhotoAdd")
+			}
+		} else {
+			empAddAttr(ctx, b, update.Message, "employeePhotoAdd")
+		}
 	} else if res == "employeeHireDateAdd" {
 		if date, err := time.Parse(dateFormat, update.Message.Text); err == nil {
 			empCash[userId].HireDate = date
@@ -134,10 +178,10 @@ func DefaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 }
 
 // cancelHandler пустая функция для выхода из меню
-func cancelHandler(ctx context.Context, b *bot.Bot, mes *models.Message, data []byte) {}
+func cancelHandler(_ context.Context, _ *bot.Bot, _ *models.Message, _ []byte) {}
 
 // BackStartHandler функция возврата в основное меню
-func BackStartHandler(ctx context.Context, b *bot.Bot, mes *models.Message, data []byte) {
+func BackStartHandler(ctx context.Context, b *bot.Bot, mes *models.Message, _ []byte) {
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: mes.Chat.ID,
 		Text:   "/start",

@@ -9,8 +9,9 @@ import (
 	"os/signal"
 )
 
-// Send any text message to the bot after the bot has been started
+const BotToken = "5844620699:AAGbEPIFWKxTDr0jR_A77Rba95jtZBSQlGM"
 
+// Send any text message to the bot after the bot has been started
 func main() {
 	//db.DropDB()
 	//db.InitDB()
@@ -26,7 +27,7 @@ func main() {
 		bot.WithDefaultHandler(h.DefaultHandler),
 	}
 
-	b, err := bot.New("5844620699:AAGbEPIFWKxTDr0jR_A77Rba95jtZBSQlGM", opts...)
+	b, err := bot.New(BotToken, opts...)
 	if err != nil {
 		panic(err)
 	}
