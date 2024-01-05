@@ -122,3 +122,24 @@ func DeleteById(ctx context.Context, id int) error {
 	}
 	return nil
 }
+
+func Get(ctx context.Context, id int) (Employee, error) {
+	var (
+		emp        Employee
+		idPosition int
+	)
+	pool, err := db.Pool(ctx)
+	defer pool.Close()
+	if err != nil {
+		return Employee{}, err
+	}
+	query := "select id, first_name, middle_name, last_name, birth_date, email, phone_number, id_position, hire_date, photo from go_bot.employee t where id=$1"
+	row := pool.QueryRow(ctx, query, id)
+	if err := row.Scan(&emp.Id, &emp.FirstName, &emp.MiddleName, &emp.LastName, &emp.BirthDate, &emp.Email, &emp.PhoneNumber, &idPosition, &emp.HireDate, &emp.Photo); err != nil {
+		return Employee{}, nil
+	}
+	if emp.Position, err = pstn.Get(ctx, idPosition); err != nil {
+		return Employee{}, err
+	}
+	return emp, nil
+}

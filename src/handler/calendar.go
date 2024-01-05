@@ -2,16 +2,23 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/go-telegram/ui/datepicker"
 	"github.com/go-telegram/ui/keyboard/inline"
 	schdlr "go_telegram_bot/database/schedule"
 	sttng "go_telegram_bot/database/setting"
+	"go_telegram_bot/src/slider_cust"
+	"strconv"
 	"time"
 )
 
 const datetimeFormat string = "02.01.2006 15:04"
+
+var (
+	schedTimeCash = map[int64]*schdlr.Schedule{}
+)
 
 func CalendarHandler(ctx context.Context, b *bot.Bot, mes *models.Message, data []byte) {
 
@@ -53,7 +60,7 @@ func TimeHandler(ctx context.Context, b *bot.Bot, mes *models.Message, date time
 	rowWidthCnt := 0
 	for {
 		nextTime := startTime.Add(time.Minute * time.Duration(60*sttng.SessionTimeHour))
-		kbTime.Button(getStrSched(startTime, nextTime), []byte(startTime.Format(datetimeFormat)), TimeAnswerHandler)
+		kbTime.Button(getStrSched(startTime, nextTime), []byte(startTime.Format(datetimeFormat)), schedEmpHandler)
 		rowWidthCnt += 1
 		if rowWidthCnt == sttng.TimeKeyboarWidth {
 			kbTime.Row()
@@ -73,20 +80,72 @@ func TimeHandler(ctx context.Context, b *bot.Bot, mes *models.Message, date time
 	})
 }
 
-func TimeAnswerHandler(ctx context.Context, b *bot.Bot, mes *models.Message, data []byte) {
-	var sendMsg string
-	if schedTime, err := time.Parse(datetimeFormat, string(data)); err != nil {
-		sendMsg = highlightTxt("В процессе записи произошла ощибка: " + err.Error())
-	} else {
-		if err := schdlr.InsertSchedule(ctx, mes.Chat.ID, schedTime); err != nil {
-			sendMsg = highlightTxt("В процессе записи произошла ощибка: " + err.Error())
-		} else {
-			sendMsg = highlightTxt("Вы записались на " + string(data))
-		}
+func schedEmpHandler(ctx context.Context, b *bot.Bot, mes *models.Message, data []byte) {
+	var (
+		slides []slider_cust.Slide
+	)
+	schedTime, errParse := time.Parse(datetimeFormat, string(data))
+	if errParse != nil {
+		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID:      mes.Chat.ID,
+			Text:        highlightTxt("В процессе преобразования даты произошла ощибка: " + errParse.Error()),
+			ReplyMarkup: inline.New(b).Button("Назад", []byte(""), empSettingHandler),
+			ParseMode:   models.ParseModeHTML,
+		})
+		return
 	}
 
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	empSlice, errSched := schdlr.GetFreeEmpVisitDt(ctx, schedTime)
+	if errSched != nil {
+		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID:      mes.Chat.ID,
+			Text:        highlightTxt("В процессе получения свободных сотрудников произошла ощибка: " + errSched.Error()),
+			ReplyMarkup: inline.New(b).Button("Назад", []byte(""), empSettingHandler),
+			ParseMode:   models.ParseModeHTML,
+		})
+	}
+
+	for _, employee := range empSlice {
+		slides = append(slides, slider_cust.Slide{
+			Photo:    string(employee.Photo),
+			IsUpload: true,
+			Text:     employee.MiddleName + " " + employee.FirstName + " " + employee.LastName,
+			Data:     []byte(strconv.Itoa(employee.Id)),
+		})
+	}
+
+	opts := []slider_cust.Option{
+		slider_cust.OnSelect("Выбрать", true, sliderOnSelect),
+		slider_cust.OnCancel("Назад", true, sliderOnCancel1),
+	}
+	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    mes.Chat.ID,
-		Text:      sendMsg,
-		ParseMode: models.ParseModeHTML})
+		Text:      highlightTxt("Выберите сотрудника"),
+		ParseMode: models.ParseModeHTML,
+	})
+
+	sl := slider_cust.New(slides, opts...)
+	_, _ = sl.Show(ctx, b, mes.Chat.ID)
+	schedTimeCash[mes.Chat.ID] = &schdlr.Schedule{IdUser: mes.Chat.ID, VisitDt: schedTime}
+}
+
+func sliderOnSelect(ctx context.Context, b *bot.Bot, mes *models.Message, item int, data []byte) {
+	if idEmp, err := strconv.ParseInt(string(data), 10, 64); err != nil {
+		fmt.Println("Error")
+	} else {
+		fmt.Println(schedTimeCash[mes.Chat.ID].VisitDt, idEmp)
+		schedTimeCash[mes.Chat.ID].IdEmployee = idEmp
+	}
+	if err := schedTimeCash[mes.Chat.ID].Insert(ctx); err != nil {
+		fmt.Println("Error")
+	}
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: mes.Chat.ID,
+		Text:   "Select " + string(data),
+	})
+}
+
+// sliderOnCancel1 функция возврата в настройки
+func sliderOnCancel1(ctx context.Context, b *bot.Bot, mes *models.Message) {
+	empSettingHandler(ctx, b, mes, []byte(""))
 }

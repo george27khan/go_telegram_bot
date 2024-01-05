@@ -171,7 +171,7 @@ func empShowHandler(ctx context.Context, b *bot.Bot, mes *models.Message, _ []by
 		})
 	}
 	opts := []slider.Option{
-		//slider.OnSelect("Select", true, sliderOnSelect),
+		//slider_cust.OnSelect("Select", true, sliderOnSelect),
 		slider.OnCancel("Назад", true, sliderOnCancel),
 	}
 	sl := slider.New(slides, opts...)
