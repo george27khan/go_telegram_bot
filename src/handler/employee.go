@@ -38,7 +38,7 @@ func empSettingHandler(ctx context.Context, b *bot.Bot, mes *models.Message, _ [
 		Row().
 		Button("Вывести сотрудников", []byte(""), empShowHandler).
 		Row().
-		Button("Назад", []byte(""), BackSettingHandler)
+		Button("⬅️ Назад", []byte(""), BackSettingHandler)
 
 	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      mes.Chat.ID,

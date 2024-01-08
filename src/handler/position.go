@@ -22,7 +22,7 @@ func positionSettingHandler(ctx context.Context, b *bot.Bot, mes *models.Message
 		Row().
 		Button("Вывести должности", []byte(""), positionShowHandler).
 		Row().
-		Button("Назад", []byte(""), BackSettingHandler)
+		Button("⬅️Назад", []byte(""), BackSettingHandler)
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      mes.Chat.ID,

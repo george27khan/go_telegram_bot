@@ -1,14 +1,17 @@
 package handler
 
 import (
+	//Petrovich "Petrovich-Go"
 	"context"
 	"fmt"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/go-telegram/ui/datepicker"
 	"github.com/go-telegram/ui/keyboard/inline"
+	emp "go_telegram_bot/database/employee"
 	schdlr "go_telegram_bot/database/schedule"
 	sttng "go_telegram_bot/database/setting"
+	"go_telegram_bot/src/Petrovich"
 	"go_telegram_bot/src/slider_cust"
 	"strconv"
 	"time"
@@ -20,8 +23,7 @@ var (
 	schedTimeCash = map[int64]*schdlr.Schedule{}
 )
 
-func CalendarHandler(ctx context.Context, b *bot.Bot, mes *models.Message, data []byte) {
-
+func CalendarHandler(ctx context.Context, b *bot.Bot, mes *models.Message, _ []byte) {
 	//excludeDays := []time.Time{
 	//	makeTime(2020, 1, 10),
 	//	makeTime(2020, 1, 13),
@@ -29,11 +31,12 @@ func CalendarHandler(ctx context.Context, b *bot.Bot, mes *models.Message, data 
 	//	makeTime(2019, 12, 28),
 	//	makeTime(2019, 12, 29),
 	//}
+	dateFrom := time.Now()
+	dateTo := dateFrom.AddDate(0, 0, sttng.DaysInSchedule)
 	opts := []datepicker.Option{
-		datepicker.StartFromSunday(),
-		datepicker.CurrentDate(time.Now()),
-		datepicker.From(time.Now()),
-		datepicker.To(time.Now().AddDate(0, 0, sttng.DaysInSchedule)),
+		datepicker.CurrentDate(dateFrom),
+		datepicker.From(dateFrom),
+		datepicker.To(dateTo),
 		//datepicker.OnCancel(onDatepickerCustomCancel),
 		datepicker.Language(lang),
 		//datepicker.Dates(datepicker.DateModeExclude, excludeDays),
@@ -60,12 +63,17 @@ func TimeHandler(ctx context.Context, b *bot.Bot, mes *models.Message, date time
 	rowWidthCnt := 0
 	for {
 		nextTime := startTime.Add(time.Minute * time.Duration(60*sttng.SessionTimeHour))
-		kbTime.Button(getStrSched(startTime, nextTime), []byte(startTime.Format(datetimeFormat)), schedEmpHandler)
+		if schdlr.TimeExists(ctx, startTime) == 0 {
+			kbTime.Button(getStrSched(startTime, nextTime), []byte(startTime.Format(datetimeFormat)), schedEmpHandler)
+		} else {
+			kbTime.Button("-", []byte(""), CalendarHandler)
+		}
 		rowWidthCnt += 1
 		if rowWidthCnt == sttng.TimeKeyboarWidth {
 			kbTime.Row()
 			rowWidthCnt = 0
 		}
+
 		startTime = nextTime
 		if startTime.After(endTime) || startTime.Equal(endTime) {
 			break
@@ -89,7 +97,7 @@ func schedEmpHandler(ctx context.Context, b *bot.Bot, mes *models.Message, data 
 		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID:      mes.Chat.ID,
 			Text:        highlightTxt("В процессе преобразования даты произошла ощибка: " + errParse.Error()),
-			ReplyMarkup: inline.New(b).Button("Назад", []byte(""), empSettingHandler),
+			ReplyMarkup: inline.New(b).Button("Назад", []byte(""), CalendarHandler),
 			ParseMode:   models.ParseModeHTML,
 		})
 		return
@@ -130,18 +138,40 @@ func schedEmpHandler(ctx context.Context, b *bot.Bot, mes *models.Message, data 
 }
 
 func sliderOnSelect(ctx context.Context, b *bot.Bot, mes *models.Message, item int, data []byte) {
-	if idEmp, err := strconv.ParseInt(string(data), 10, 64); err != nil {
-		fmt.Println("Error")
+	p, err := Petrovich.LoadRules("./src/Petrovich/rules.json")
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	idEmp, err := strconv.Atoi(string(data))
+
+	if err != nil {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: mes.Chat.ID,
+			Text:   "В процессе получения ИД сотрудника произошла ошибка " + err.Error(),
+		})
 	} else {
 		fmt.Println(schedTimeCash[mes.Chat.ID].VisitDt, idEmp)
 		schedTimeCash[mes.Chat.ID].IdEmployee = idEmp
 	}
 	if err := schedTimeCash[mes.Chat.ID].Insert(ctx); err != nil {
-		fmt.Println("Error")
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: mes.Chat.ID,
+			Text:   "В процессе сохранения записи произошла ошибка " + err.Error(),
+		})
+	}
+	FIO, err := emp.GetFIO(ctx, idEmp)
+	if err != nil {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: mes.Chat.ID,
+			Text:   "В процессе получения ФИО произошла ошибка " + err.Error(),
+		})
 	}
 	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: mes.Chat.ID,
-		Text:   "Select " + string(data),
+		ChatID:    mes.Chat.ID,
+		Text:      highlightTxt("Вы записались к " + p.InfFio(FIO, Petrovich.Dative, false) + " на " + schedTimeCash[mes.Chat.ID].VisitDt.Format(datetimeFormat)),
+		ParseMode: models.ParseModeHTML,
 	})
 }
 

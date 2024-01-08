@@ -11,7 +11,7 @@ import (
 
 type Schedule struct {
 	IdUser     int64
-	IdEmployee int64
+	IdEmployee int
 	VisitDt    time.Time
 }
 
@@ -62,7 +62,7 @@ func GetFreeEmpVisitDt(ctx context.Context, visitDt time.Time) (empSlice []emp.E
 	return empSlice, nil
 }
 
-func LoadSchedByEmpIdDt(ctx context.Context, visitDt time.Time) (shedSlice []Schedule, err error) {
+func GetByDt(ctx context.Context, visitDt time.Time) (shedSlice []Schedule, err error) {
 	var (
 		schedule Schedule
 	)
@@ -84,4 +84,68 @@ func LoadSchedByEmpIdDt(ctx context.Context, visitDt time.Time) (shedSlice []Sch
 		shedSlice = append(shedSlice, schedule)
 	}
 	return
+}
+
+func GetByUser(ctx context.Context, idUser int64) (Schedule, error) {
+	var (
+		sched Schedule
+	)
+	pool, err := db.Pool(ctx)
+	defer pool.Close()
+	if err != nil {
+		return Schedule{}, err
+	}
+	query := "select id_user, visit_dt, id_employee from go_bot.schedule t where t.id_user = $1 order by t.visit_dt desc limit 1"
+	row := pool.QueryRow(ctx, query, idUser)
+	if err != nil {
+		return Schedule{}, err
+	}
+	if err := row.Scan(&sched.IdUser, &sched.VisitDt, &sched.IdEmployee); err != nil {
+		return Schedule{}, err
+	}
+	return sched, nil
+}
+
+func GetAllByUser(ctx context.Context, idUser int64) ([]Schedule, error) {
+	var (
+		schedSlice []Schedule
+		sched      Schedule
+	)
+	pool, err := db.Pool(ctx)
+	defer pool.Close()
+	if err != nil {
+		return nil, err
+	}
+	query := "select id_user, visit_dt, id_employee from go_bot.schedule t where t.id_user = $1 order by t.visit_dt desc"
+	rows, err := pool.Query(ctx, query, idUser)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		if err := rows.Scan(&sched.IdUser, &sched.VisitDt, &sched.IdEmployee); err != nil {
+			return nil, err
+		}
+		schedSlice = append(schedSlice, sched)
+	}
+	return schedSlice, nil
+}
+
+func TimeExists(ctx context.Context, visitDt time.Time) (cnt int) {
+	pool, err := db.Pool(ctx)
+	defer pool.Close()
+	if err != nil {
+		return 0
+	}
+	query := "select count(1) from go_bot.schedule t where t.visit_dt = $1"
+	row := pool.QueryRow(ctx, query, visitDt)
+	if err != nil {
+		return 1
+	}
+	if err := row.Scan(&cnt); err != nil {
+		fmt.Println(err)
+		return 1
+	}
+	return cnt
+
 }

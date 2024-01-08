@@ -143,3 +143,20 @@ func Get(ctx context.Context, id int) (Employee, error) {
 	}
 	return emp, nil
 }
+
+func GetFIO(ctx context.Context, id int) (string, error) {
+	var (
+		FIO string
+	)
+	pool, err := db.Pool(ctx)
+	defer pool.Close()
+	if err != nil {
+		return "", err
+	}
+	query := "select middle_name || ' ' || first_name || ' ' || last_name from go_bot.employee t where id=$1"
+	row := pool.QueryRow(ctx, query, id)
+	if err := row.Scan(&FIO); err != nil {
+		return "", err
+	}
+	return FIO, nil
+}

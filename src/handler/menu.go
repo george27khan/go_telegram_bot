@@ -16,12 +16,21 @@ import (
 	"time"
 )
 
+// формат даты
 const dateFormat string = "02.01.2006"
+
+// шаблон url для бота
 const fileDownloadURL string = "https://api.telegram.org/file/bot%s/%s" //https://api.telegram.org/file/bot<token>/<file_path>
+
 var (
 	lang    string // язык для чата
 	empCash = map[int64]*emp.Employee{}
 )
+
+// highlightTxt функция выделения текста сообщения телеграмм
+func highlightTxt(str string) string {
+	return "<b>" + str + "</b>"
+}
 
 // menuKeyboard функция формирования клавиатуры меню
 func menuKeyboard(b *bot.Bot) *inline.Keyboard {
@@ -29,14 +38,11 @@ func menuKeyboard(b *bot.Bot) *inline.Keyboard {
 		Row().
 		Button("📆 Запись на прием", []byte(""), CalendarHandler).
 		Row().
+		Button("📝 Записи", []byte(""), entryHandler).
+		Row().
 		Button("⚙️ Настройки", []byte(""), settingHandler).
 		Row().
-		Button("Выход", []byte(""), cancelHandler)
-}
-
-// highlightTxt функция выделения текста сообщения телеграмм
-func highlightTxt(str string) string {
-	return "<b>" + str + "</b>"
+		Button("❌ Выход", []byte(""), cancelHandler)
 }
 
 // StartHandler функция вывода начального меню
@@ -66,7 +72,7 @@ func settingHandler(ctx context.Context, b *bot.Bot, mes *models.Message, _ []by
 		Row().
 		Button("Сотрудник", []byte(""), empSettingHandler).
 		Row().
-		Button("Назад", []byte(""), BackStartHandler)
+		Button("⬅️ Назад", []byte(""), BackStartHandler)
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      mes.Chat.ID,
