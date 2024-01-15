@@ -18,14 +18,14 @@ func Get(ctx context.Context, id int) (Position, error) {
 	var (
 		position Position
 	)
-	pool, err := db.Pool(ctx)
-	defer pool.Close()
+	conn, err := db.PGPool.Acquire(ctx)
+	defer conn.Release()
 	if err != nil {
 		return Position{}, err
 	}
 	query := "select t.id, t.position_name from go_bot.position t where t.id=$1"
 
-	row := pool.QueryRow(ctx, query, id)
+	row := conn.QueryRow(ctx, query, id)
 	if err != nil {
 		return Position{}, err
 	}
@@ -37,13 +37,14 @@ func Get(ctx context.Context, id int) (Position, error) {
 
 // Insert функция для добавления записи в таблицу position
 func (p *Position) Insert(ctx context.Context) error {
-	pool, err := db.Pool(ctx)
-	defer pool.Close()
+	conn, err := db.PGPool.Acquire(ctx)
+	defer conn.Release()
 	if err != nil {
+		fmt.Println("111111111111111111111111111111 ", err)
 		return err
 	}
 	query := "INSERT INTO go_bot.position(position_name) VALUES ($1)"
-	if _, err = pool.Exec(ctx, query, strings.ToLower(p.PositionName)); err != nil {
+	if _, err := conn.Exec(ctx, query, strings.ToLower(p.PositionName)); err != nil {
 		return err
 	}
 	return nil
@@ -51,13 +52,13 @@ func (p *Position) Insert(ctx context.Context) error {
 
 // DeleteById функция для удаления записи из таблицы position по id
 func DeleteById(ctx context.Context, id int) error {
-	pool, err := db.Pool(ctx)
-	defer pool.Close()
+	conn, err := db.PGPool.Acquire(ctx)
+	defer conn.Release()
 	if err != nil {
 		return err
 	}
 	query := "delete from go_bot.position t where t.id = $1"
-	if _, err = pool.Exec(ctx, query, id); err != nil {
+	if _, err = conn.Exec(ctx, query, id); err != nil {
 		return err
 	}
 	return nil
@@ -69,14 +70,14 @@ func SelectAll(ctx context.Context) ([]Position, error) {
 		position  Position
 		positions []Position
 	)
-	pool, err := db.Pool(ctx)
-	defer pool.Close()
+	conn, err := db.PGPool.Acquire(ctx)
+	defer conn.Release()
 	if err != nil {
 		return nil, err
 	}
 	query := "select t.id, t.position_name from go_bot.position t"
 
-	rows, err := pool.Query(ctx, query)
+	rows, err := conn.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("unable to query users: %w", err)
 	}

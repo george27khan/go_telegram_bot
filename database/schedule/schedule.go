@@ -16,8 +16,8 @@ type Schedule struct {
 }
 
 func (sched *Schedule) Insert(ctx context.Context) error {
-	pool, err := db.Pool(ctx)
-	defer pool.Close()
+	conn, err := db.PGPool.Acquire(ctx)
+	defer conn.Release()
 	if err != nil {
 		return err
 	}
@@ -27,10 +27,7 @@ func (sched *Schedule) Insert(ctx context.Context) error {
 		"id_employee": sched.IdEmployee,
 		"visit_dt":    sched.VisitDt,
 	}
-	_, err = pool.Exec(ctx, query, args)
-	if err := pool.Ping(ctx); err != nil {
-		return fmt.Errorf("Insert row problem: %w", err)
-	}
+	_, err = conn.Exec(ctx, query, args)
 	return nil
 }
 
@@ -38,13 +35,13 @@ func GetFreeEmpVisitDt(ctx context.Context, visitDt time.Time) (empSlice []emp.E
 	var (
 		idEmp int
 	)
-	pool, err := db.Pool(ctx)
-	defer pool.Close()
+	conn, err := db.PGPool.Acquire(ctx)
+	defer conn.Release()
 	if err != nil {
 		return nil, err
 	}
 	query := "select e.id from go_bot.employee e where not exists(select 1 from go_bot.schedule t where t.id_employee = e.id and t.visit_dt = $1)"
-	rows, errQuery := pool.Query(ctx, query, visitDt)
+	rows, errQuery := conn.Query(ctx, query, visitDt)
 	if errQuery != nil {
 		return nil, errQuery
 	}
@@ -66,13 +63,13 @@ func GetByDt(ctx context.Context, visitDt time.Time) (shedSlice []Schedule, err 
 	var (
 		schedule Schedule
 	)
-	pool, err := db.Pool(ctx)
-	defer pool.Close()
+	conn, err := db.PGPool.Acquire(ctx)
+	defer conn.Release()
 	if err != nil {
 		return nil, err
 	}
 	query := "select id_user, visit_dt, created_dt, id_employee from go_bot.schedule t where t.id_employee = @id_employee and DATE_TRUNC('DAY', t.visit_dt) = $1"
-	rows, err := pool.Query(ctx, query, visitDt)
+	rows, err := conn.Query(ctx, query, visitDt)
 	if err != nil {
 		return nil, err
 	}
@@ -90,13 +87,13 @@ func GetByUser(ctx context.Context, idUser int64) (Schedule, error) {
 	var (
 		sched Schedule
 	)
-	pool, err := db.Pool(ctx)
-	defer pool.Close()
+	conn, err := db.PGPool.Acquire(ctx)
+	defer conn.Release()
 	if err != nil {
 		return Schedule{}, err
 	}
 	query := "select id_user, visit_dt, id_employee from go_bot.schedule t where t.id_user = $1 order by t.visit_dt desc limit 1"
-	row := pool.QueryRow(ctx, query, idUser)
+	row := conn.QueryRow(ctx, query, idUser)
 	if err != nil {
 		return Schedule{}, err
 	}
@@ -111,13 +108,13 @@ func GetAllByUser(ctx context.Context, idUser int64) ([]Schedule, error) {
 		schedSlice []Schedule
 		sched      Schedule
 	)
-	pool, err := db.Pool(ctx)
-	defer pool.Close()
+	conn, err := db.PGPool.Acquire(ctx)
+	defer conn.Release()
 	if err != nil {
 		return nil, err
 	}
 	query := "select id_user, visit_dt, id_employee from go_bot.schedule t where t.id_user = $1 order by t.visit_dt desc"
-	rows, err := pool.Query(ctx, query, idUser)
+	rows, err := conn.Query(ctx, query, idUser)
 	if err != nil {
 		return nil, err
 	}
@@ -132,13 +129,13 @@ func GetAllByUser(ctx context.Context, idUser int64) ([]Schedule, error) {
 }
 
 func TimeExists(ctx context.Context, visitDt time.Time) (cnt int) {
-	pool, err := db.Pool(ctx)
-	defer pool.Close()
+	conn, err := db.PGPool.Acquire(ctx)
+	defer conn.Release()
 	if err != nil {
 		return 0
 	}
 	query := "select count(1) from go_bot.schedule t where t.visit_dt = $1"
-	row := pool.QueryRow(ctx, query, visitDt)
+	row := conn.QueryRow(ctx, query, visitDt)
 	if err != nil {
 		return 1
 	}

@@ -12,6 +12,8 @@ import (
 	"sync"
 )
 
+var PGPool *pgxpool.Pool
+
 func getPGconnStr() (connStr string) {
 	// loads DB settings from .env into the system
 	if err := godotenv.Load("./db.env"); err != nil {
@@ -23,6 +25,7 @@ func getPGconnStr() (connStr string) {
 
 	//"postgres://username:password@localhost:5432/database_name"
 	connStr = fmt.Sprintf("postgres://%s:%s@localhost:5432/%s", dbUser, dbPwd, dbName)
+	fmt.Println("connStr ", connStr)
 	return
 }
 
@@ -94,4 +97,12 @@ func DropDB() {
 	}
 
 	fmt.Printf("Migration done. Current schema version: %v\n", ver)
+}
+
+func init() {
+	var err error
+	PGPool, err = Pool(context.Background())
+	if err != nil {
+		fmt.Println(err)
+	}
 }

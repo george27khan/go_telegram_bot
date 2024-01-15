@@ -25,8 +25,8 @@ type Employee struct {
 
 // Insert функция для добавление записи в таблицу
 func (e *Employee) Insert(ctx context.Context) error {
-	pool, err := db.Pool(ctx)
-	defer pool.Close()
+	conn, err := db.PGPool.Acquire(ctx)
+	defer conn.Release()
 	if err != nil {
 		return err
 	}
@@ -43,7 +43,7 @@ func (e *Employee) Insert(ctx context.Context) error {
 		"hire_date":    e.HireDate,
 		"photo":        e.Photo,
 	}
-	if res, err := pool.Exec(ctx, query, args); err != nil {
+	if res, err := conn.Exec(ctx, query, args); err != nil {
 		fmt.Println(err)
 		return err
 	} else {
@@ -55,14 +55,14 @@ func (e *Employee) Insert(ctx context.Context) error {
 
 // Delete функция для удаления записи из таблицы
 func (e *Employee) Delete(ctx context.Context) error {
-	pool, err := db.Pool(ctx)
-	defer pool.Close()
+	conn, err := db.PGPool.Acquire(ctx)
+	defer conn.Release()
 	if err != nil {
 		return err
 	}
 	query := "delete from go_bot.employee t where t.id = $1"
-	_, err = pool.Exec(ctx, query, e.Id)
-	if err := pool.Ping(ctx); err != nil {
+	_, err = conn.Exec(ctx, query, e.Id)
+	if err := conn.Ping(ctx); err != nil {
 		return err
 	}
 	return nil
@@ -75,13 +75,13 @@ func SelectAll(ctx context.Context) ([]Employee, error) {
 		employees []Employee
 		idPos     int
 	)
-	pool, err := db.Pool(ctx)
-	defer pool.Close()
+	conn, err := db.PGPool.Acquire(ctx)
+	defer conn.Release()
 	if err != nil {
 		return nil, err
 	}
 	query := "select id, first_name, middle_name, last_name, birth_date, email, phone_number, id_position, hire_date, photo from go_bot.employee t"
-	rows, err := pool.Query(ctx, query)
+	rows, err := conn.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -111,13 +111,13 @@ func SelectAllStr(ctx context.Context) (res []string, err error) {
 
 // DeleteById удаление записи из таблицы по id
 func DeleteById(ctx context.Context, id int) error {
-	pool, err := db.Pool(ctx)
-	defer pool.Close()
+	conn, err := db.PGPool.Acquire(ctx)
+	defer conn.Release()
 	if err != nil {
 		return err
 	}
 	query := "delete from go_bot.employee t where t.id = $1"
-	if _, err = pool.Exec(ctx, query, id); err != nil {
+	if _, err = conn.Exec(ctx, query, id); err != nil {
 		return err
 	}
 	return nil
@@ -128,13 +128,13 @@ func Get(ctx context.Context, id int) (Employee, error) {
 		emp        Employee
 		idPosition int
 	)
-	pool, err := db.Pool(ctx)
-	defer pool.Close()
+	conn, err := db.PGPool.Acquire(ctx)
+	defer conn.Release()
 	if err != nil {
 		return Employee{}, err
 	}
 	query := "select id, first_name, middle_name, last_name, birth_date, email, phone_number, id_position, hire_date, photo from go_bot.employee t where id=$1"
-	row := pool.QueryRow(ctx, query, id)
+	row := conn.QueryRow(ctx, query, id)
 	if err := row.Scan(&emp.Id, &emp.FirstName, &emp.MiddleName, &emp.LastName, &emp.BirthDate, &emp.Email, &emp.PhoneNumber, &idPosition, &emp.HireDate, &emp.Photo); err != nil {
 		return Employee{}, nil
 	}
@@ -148,13 +148,13 @@ func GetFIO(ctx context.Context, id int) (string, error) {
 	var (
 		FIO string
 	)
-	pool, err := db.Pool(ctx)
-	defer pool.Close()
+	conn, err := db.PGPool.Acquire(ctx)
+	defer conn.Release()
 	if err != nil {
 		return "", err
 	}
 	query := "select middle_name || ' ' || first_name || ' ' || last_name from go_bot.employee t where id=$1"
-	row := pool.QueryRow(ctx, query, id)
+	row := conn.QueryRow(ctx, query, id)
 	if err := row.Scan(&FIO); err != nil {
 		return "", err
 	}

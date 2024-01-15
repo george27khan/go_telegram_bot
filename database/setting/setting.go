@@ -18,7 +18,7 @@ var (
 	EndHourSchedule   map[string]float64
 )
 
-func GetNumberVal(ctx context.Context, pool *pgxpool.Pool, setting_code string) (float64, error) {
+func GetNumberVal(ctx context.Context, pool *pgxpool.Conn, setting_code string) (float64, error) {
 	var numberVal float64
 	query := "SELECT s.number_value FROM go_bot.setting s where s.setting_code = $1"
 	row := pool.QueryRow(ctx, query, setting_code)
@@ -29,7 +29,7 @@ func GetNumberVal(ctx context.Context, pool *pgxpool.Pool, setting_code string) 
 	return numberVal, nil
 }
 
-func GetStringVal(ctx context.Context, pool *pgxpool.Pool, setting_code string) (string, error) {
+func GetStringVal(ctx context.Context, pool *pgxpool.Conn, setting_code string) (string, error) {
 	var stringVal string
 	query := "SELECT s.string_value FROM go_bot.setting s where s.setting_code = $1"
 	row := pool.QueryRow(ctx, query, setting_code)
@@ -40,7 +40,7 @@ func GetStringVal(ctx context.Context, pool *pgxpool.Pool, setting_code string) 
 	return stringVal, nil
 }
 
-func GetDateVal(ctx context.Context, pool *pgxpool.Pool, setting_code string) (time.Time, error) {
+func GetDateVal(ctx context.Context, pool *pgxpool.Conn, setting_code string) (time.Time, error) {
 	var dateVal time.Time
 	query := "SELECT s.date_value FROM go_bot.setting s where s.setting_code = $1"
 	row := pool.QueryRow(ctx, query, setting_code)
@@ -51,7 +51,7 @@ func GetDateVal(ctx context.Context, pool *pgxpool.Pool, setting_code string) (t
 	return dateVal, nil
 }
 
-func GetJSONVal(ctx context.Context, pool *pgxpool.Pool, setting_code string) ([]byte, error) {
+func GetJSONVal(ctx context.Context, pool *pgxpool.Conn, setting_code string) ([]byte, error) {
 	var (
 		jsonVal []byte
 	)
@@ -70,27 +70,27 @@ func LoadSettings(ctx context.Context) bool {
 		jsonVal []byte
 		ok      bool = true
 	)
-	pool, _ := db.Pool(ctx)
-	defer pool.Close()
+	conn, err := db.PGPool.Acquire(ctx)
+	defer conn.Release()
 
-	if SessionTimeHour, err = GetNumberVal(ctx, pool, "session_time_hour"); err != nil {
+	if SessionTimeHour, err = GetNumberVal(ctx, conn, "session_time_hour"); err != nil {
 		fmt.Println("Error load session_time_hour")
 		ok = false
 	}
-	if val, err := GetNumberVal(ctx, pool, "time_keyboar_width"); err != nil {
+	if val, err := GetNumberVal(ctx, conn, "time_keyboar_width"); err != nil {
 		fmt.Println("Error load time_keyboar_width")
 		ok = false
 	} else {
 		TimeKeyboarWidth = int(val)
 	}
-	if val, err := GetNumberVal(ctx, pool, "days_in_schedule"); err != nil {
+	if val, err := GetNumberVal(ctx, conn, "days_in_schedule"); err != nil {
 		fmt.Println("Error load days_in_schedule")
 		ok = false
 	} else {
 		DaysInSchedule = int(val)
 	}
 
-	if jsonVal, err = GetJSONVal(ctx, pool, "start_hour_schedule"); err != nil {
+	if jsonVal, err = GetJSONVal(ctx, conn, "start_hour_schedule"); err != nil {
 		fmt.Println("Error load start_hour_schedule")
 		ok = false
 	} else {
@@ -98,7 +98,7 @@ func LoadSettings(ctx context.Context) bool {
 			fmt.Println("Error load start_hour_schedule")
 		}
 	}
-	if jsonVal, err = GetJSONVal(ctx, pool, "end_hour_schedule"); err != nil {
+	if jsonVal, err = GetJSONVal(ctx, conn, "end_hour_schedule"); err != nil {
 		fmt.Println("Error load end_hour_schedule")
 		ok = false
 	} else {
