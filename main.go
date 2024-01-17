@@ -3,22 +3,32 @@ package main
 import (
 	"context"
 	"github.com/go-telegram/bot"
-	_ "go_telegram_bot/database/setting"
+	"github.com/joho/godotenv"
 	h "go_telegram_bot/src/handler"
+	"log"
 	"os"
 	"os/signal"
 )
+
+var (
+	botToken string
+)
+
+func loadEnv() {
+	// loads DB settings from .env into the system
+	if err := godotenv.Load("./bot.env"); err != nil {
+		log.Print("No .env file found")
+	}
+	botToken = os.Getenv("TELEGRAM_BOT_TOKEN")
+}
 
 const BotToken = "5844620699:AAGbEPIFWKxTDr0jR_A77Rba95jtZBSQlGM"
 
 // Send any text message to the bot after the bot has been started
 func main() {
+	loadEnv()
 	//db.DropDB()
 	//db.InitDB()
-	//res := rdb.HSet(context.Background(), "state", map[string]interface{}{"key1": "value1"})
-	//fmt.Println("res ", res)
-	//res1 := rdb.HGet(context.TODO(), "state", "key1")
-	//fmt.Println("res1 ", res1.Val())
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
@@ -32,8 +42,5 @@ func main() {
 		panic(err)
 	}
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/start", bot.MatchTypeExact, h.StartHandler)
-	//b.RegisterHandler(bot.HandlerTypeCallbackQueryData, "/schedule", bot.MatchTypeExact, h.CalendarHandler)
 	b.Start(ctx)
-
-	//db_sett.LoadSettings(ctx)
 }
