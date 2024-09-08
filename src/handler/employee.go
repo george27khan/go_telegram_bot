@@ -7,8 +7,8 @@ import (
 	"github.com/go-telegram/bot/models"
 	"github.com/go-telegram/ui/keyboard/inline"
 	"github.com/go-telegram/ui/slider"
-	emp "go_telegram_bot/database/employee"
-	pstn "go_telegram_bot/database/position"
+	emp "go_telegram_bot/src/database/employee"
+	pstn "go_telegram_bot/src/database/position"
 	"go_telegram_bot/src/state"
 	"strconv"
 )

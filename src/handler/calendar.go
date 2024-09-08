@@ -1,17 +1,16 @@
 package handler
 
 import (
-	//Petrovich "Petrovich-Go"
 	"context"
 	"fmt"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/go-telegram/ui/datepicker"
 	"github.com/go-telegram/ui/keyboard/inline"
-	emp "go_telegram_bot/database/employee"
-	schdlr "go_telegram_bot/database/schedule"
-	sttng "go_telegram_bot/database/setting"
 	"go_telegram_bot/src/Petrovich"
+	emp "go_telegram_bot/src/database/employee"
+	schdlr "go_telegram_bot/src/database/schedule"
+	sttng "go_telegram_bot/src/database/setting"
 	"go_telegram_bot/src/slider_cust"
 	"strconv"
 	"time"
@@ -138,12 +137,6 @@ func schedEmpHandler(ctx context.Context, b *bot.Bot, mes *models.Message, data 
 }
 
 func sliderOnSelect(ctx context.Context, b *bot.Bot, mes *models.Message, item int, data []byte) {
-	p, err := Petrovich.LoadRules("./src/Petrovich/rules.json")
-
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
 	idEmp, err := strconv.Atoi(string(data))
 
 	if err != nil {
@@ -170,7 +163,7 @@ func sliderOnSelect(ctx context.Context, b *bot.Bot, mes *models.Message, item i
 	}
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    mes.Chat.ID,
-		Text:      highlightTxt("Вы записались к " + p.InfFio(FIO, Petrovich.Dative, false) + " на " + schedTimeCash[mes.Chat.ID].VisitDt.Format(datetimeFormat)),
+		Text:      highlightTxt("Вы записались к " + declension.InfFio(FIO, Petrovich.Dative, false) + " на " + schedTimeCash[mes.Chat.ID].VisitDt.Format(datetimeFormat)),
 		ParseMode: models.ParseModeHTML,
 	})
 }

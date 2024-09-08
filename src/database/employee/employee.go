@@ -2,10 +2,9 @@ package employee
 
 import (
 	"context"
-	"fmt"
 	"github.com/jackc/pgx/v5"
-	db "go_telegram_bot/database"
-	pstn "go_telegram_bot/database/position"
+	db "go_telegram_bot/src/database"
+	pstn "go_telegram_bot/src/database/position"
 	"time"
 )
 
@@ -43,11 +42,8 @@ func (e *Employee) Insert(ctx context.Context) error {
 		"hire_date":    e.HireDate,
 		"photo":        e.Photo,
 	}
-	if res, err := conn.Exec(ctx, query, args); err != nil {
-		fmt.Println(err)
+	if _, err := conn.Exec(ctx, query, args); err != nil {
 		return err
-	} else {
-		fmt.Println(res)
 	}
 
 	return nil

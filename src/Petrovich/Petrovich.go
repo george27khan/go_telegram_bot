@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-type rules struct {
+type Rules struct {
 	Lastname   rulesGroup `json:"lastname"`
 	Firstname  rulesGroup `json:"firstname"`
 	Middlename rulesGroup `json:"middlename"`
@@ -40,7 +40,7 @@ const (
 	Prepositional
 )
 
-func LoadRules(FileWithRules string) (*rules, error) {
+func LoadRules(FileWithRules string) (*Rules, error) {
 
 	rulesFile, err := os.Open(FileWithRules)
 	if err != nil {
@@ -52,7 +52,7 @@ func LoadRules(FileWithRules string) (*rules, error) {
 	}
 	defer rulesFile.Close()
 
-	var r rules
+	var r Rules
 
 	err = json.Unmarshal([]byte(rulesData), &r)
 	if err != nil {
@@ -68,7 +68,7 @@ value: Значение для склонения
 gCase: Падеж для склонения
 gender: Грамматический род
 */
-func (r *rules) InfFirstname(value string, gCase int, gender string) string {
+func (r *Rules) InfFirstname(value string, gCase int, gender string) string {
 
 	return inflect(value, r.Firstname, gCase, gender)
 }
@@ -79,7 +79,7 @@ value: Значение для склонения
 gCase: Падеж для склонения
 gender: Грамматический род
 */
-func (r *rules) InfLastname(value string, gCase int, gender string) string {
+func (r *Rules) InfLastname(value string, gCase int, gender string) string {
 
 	return inflect(value, r.Lastname, gCase, gender)
 }
@@ -90,7 +90,7 @@ value: Значение для склонения
 gCase: Падеж для склонения
 gender: Грамматический род
 */
-func (r *rules) InfMiddlename(value string, gCase int, gender string) string {
+func (r *Rules) InfMiddlename(value string, gCase int, gender string) string {
 
 	return inflect(value, r.Middlename, gCase, gender)
 }
@@ -101,7 +101,7 @@ value: ФИО через проблеы
 gCase: Падеж для склонения
 short: Результат в сокращенной форме "Иванов И.И."
 */
-func (r *rules) InfFio(fio string, gCase int, short bool) string {
+func (r *Rules) InfFio(fio string, gCase int, short bool) string {
 	result := ""
 	fio = strings.Trim(fio, " ")
 

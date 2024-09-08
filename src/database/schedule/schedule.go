@@ -2,10 +2,9 @@ package schedule
 
 import (
 	"context"
-	"fmt"
 	"github.com/jackc/pgx/v5"
-	db "go_telegram_bot/database"
-	emp "go_telegram_bot/database/employee"
+	db "go_telegram_bot/src/database"
+	emp "go_telegram_bot/src/database/employee"
 	"time"
 )
 
@@ -140,9 +139,7 @@ func TimeExists(ctx context.Context, visitDt time.Time) (cnt int) {
 		return 1
 	}
 	if err := row.Scan(&cnt); err != nil {
-		fmt.Println(err)
 		return 1
 	}
 	return cnt
-
 }

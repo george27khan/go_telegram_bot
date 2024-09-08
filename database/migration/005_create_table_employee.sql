@@ -10,7 +10,7 @@ create table go_bot."employee"
     id_position integer not null constraint fk_emp_pos references go_bot."position",
     hire_date date not null,
     created_dt timestamp default now() not null,
-    photo bytea not null
+    photo bytea
     );
 
 alter table go_bot."employee" owner to postgres;

@@ -2,8 +2,7 @@ package position
 
 import (
 	"context"
-	"fmt"
-	db "go_telegram_bot/database"
+	db "go_telegram_bot/src/database"
 	"strings"
 )
 
@@ -35,12 +34,33 @@ func Get(ctx context.Context, id int) (Position, error) {
 	return position, nil
 }
 
+// GetByName функция для получения записи из position по наименованию
+func GetByName(ctx context.Context, name string) (Position, error) {
+	var (
+		position Position
+	)
+	conn, err := db.PGPool.Acquire(ctx)
+	defer conn.Release()
+	if err != nil {
+		return Position{}, err
+	}
+	query := "select t.id, t.position_name from go_bot.position t where t.position_name=$1"
+
+	row := conn.QueryRow(ctx, query, name)
+	if err != nil {
+		return Position{}, err
+	}
+	if err := row.Scan(&position.Id, &position.PositionName); err != nil {
+		return Position{}, err
+	}
+	return position, nil
+}
+
 // Insert функция для добавления записи в таблицу position
 func (p *Position) Insert(ctx context.Context) error {
 	conn, err := db.PGPool.Acquire(ctx)
 	defer conn.Release()
 	if err != nil {
-		fmt.Println("111111111111111111111111111111 ", err)
 		return err
 	}
 	query := "INSERT INTO go_bot.position(position_name) VALUES ($1)"
@@ -79,12 +99,12 @@ func SelectAll(ctx context.Context) ([]Position, error) {
 
 	rows, err := conn.Query(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("unable to query users: %w", err)
+		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		if err := rows.Scan(&position.Id, &position.PositionName); err != nil {
-			return nil, fmt.Errorf("unable to scan row: %w", err)
+			return nil, err
 		}
 		positions = append(positions, position)
 	}

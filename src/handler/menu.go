@@ -6,8 +6,10 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/go-telegram/ui/keyboard/inline"
-	emp "go_telegram_bot/database/employee"
-	usr "go_telegram_bot/database/user"
+	"go_telegram_bot/src/Petrovich"
+	emp "go_telegram_bot/src/database/employee"
+	fill "go_telegram_bot/src/database/fill_table"
+	usr "go_telegram_bot/src/database/user"
 	"go_telegram_bot/src/state"
 	"io"
 	"net/http"
@@ -23,8 +25,9 @@ const dateFormat string = "02.01.2006"
 const fileDownloadURL string = "https://api.telegram.org/file/bot%s/%s" //https://api.telegram.org/file/bot<token>/<file_path>
 
 var (
-	lang    string // язык для чата
-	empCash = map[int64]*emp.Employee{}
+	lang       string // язык для чата
+	empCash    = map[int64]*emp.Employee{}
+	declension *Petrovich.Rules
 )
 
 // highlightTxt функция выделения текста сообщения телеграмм
@@ -52,8 +55,14 @@ func StartHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	} else {
 		lang = "en"
 	}
-	if err := usr.InsertUser(ctx, update.Message.From.ID, update.Message.From.Username, update.Message.From.FirstName, update.Message.From.LastName, ""); err != nil {
-		fmt.Println(err)
+	if isExist, err := usr.IsExists(ctx, update.Message.From.Username); err != nil {
+		fmt.Println("Ошибка при поиска бзера ", err.Error())
+	} else {
+		if !isExist {
+			if err := usr.Insert(ctx, update.Message.From.ID, update.Message.From.Username, update.Message.From.FirstName, update.Message.From.LastName, ""); err != nil {
+				fmt.Println("Ошибка при регистрации юзера ", err.Error())
+			}
+		}
 	}
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
@@ -72,6 +81,8 @@ func settingHandler(ctx context.Context, b *bot.Bot, mes *models.Message, _ []by
 		Row().
 		Button("Сотрудник", []byte(""), empSettingHandler).
 		Row().
+		Button("Заполнить данные", []byte(""), empInitHandler).
+		Row().
 		Button("⬅️ Назад", []byte(""), BackStartHandler)
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
@@ -79,6 +90,32 @@ func settingHandler(ctx context.Context, b *bot.Bot, mes *models.Message, _ []by
 		Text:        highlightTxt("Выберите действие"),
 		ReplyMarkup: kb,
 		ParseMode:   models.ParseModeHTML,
+	})
+}
+
+// empInitHandler функция для заполнения тестовыми данными
+func empInitHandler(ctx context.Context, b *bot.Bot, mes *models.Message, _ []byte) {
+	if err := fill.AddPositions(ctx); err != nil {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID:    mes.Chat.ID,
+			Text:      highlightTxt("Ошибка в процессе заполнения таблиц " + err.Error()),
+			ParseMode: models.ParseModeHTML,
+		})
+		return
+	}
+
+	if err := fill.AddEmployees(ctx); err != nil {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID:    mes.Chat.ID,
+			Text:      highlightTxt("Ошибка в процессе заполнения таблиц " + err.Error()),
+			ParseMode: models.ParseModeHTML,
+		})
+		return
+	}
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    mes.Chat.ID,
+		Text:      highlightTxt("Таблицы успешно заполнены"),
+		ParseMode: models.ParseModeHTML,
 	})
 }
 
@@ -197,4 +234,8 @@ func BackStartHandler(ctx context.Context, b *bot.Bot, mes *models.Message, _ []
 // BackSettingHandler функция возврата в меню настроек
 func BackSettingHandler(ctx context.Context, b *bot.Bot, mes *models.Message, data []byte) {
 	settingHandler(ctx, b, mes, data)
+}
+
+func init() {
+	declension, _ = Petrovich.LoadRules("./src/Petrovich/rules.json")
 }

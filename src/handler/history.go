@@ -5,8 +5,9 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/go-telegram/ui/keyboard/inline"
-	emp "go_telegram_bot/database/employee"
-	sched "go_telegram_bot/database/schedule"
+	"go_telegram_bot/src/Petrovich"
+	emp "go_telegram_bot/src/database/employee"
+	sched "go_telegram_bot/src/database/schedule"
 )
 
 // entryHandler функция вывода меню просмотра записей
@@ -50,7 +51,7 @@ func actualEntryHandler(ctx context.Context, b *bot.Bot, mes *models.Message, _ 
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      mes.Chat.ID,
-		Text:        highlightTxt("Вы записаны к " + FIO + " на " + schedule.VisitDt.Format(datetimeFormat)),
+		Text:        highlightTxt("Вы записаны к " + declension.InfFio(FIO, Petrovich.Dative, false) + " на " + schedule.VisitDt.Format(datetimeFormat)),
 		ReplyMarkup: inline.New(b).Button("⬅️ Назад", []byte(""), entryHandler),
 		ParseMode:   models.ParseModeHTML,
 	})

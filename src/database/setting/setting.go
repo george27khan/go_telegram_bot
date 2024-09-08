@@ -3,9 +3,9 @@ package setting
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/jackc/pgx/v5/pgxpool"
-	db "go_telegram_bot/database"
+	db "go_telegram_bot/src/database"
+	"go_telegram_bot/src/slog"
 	"time"
 )
 
@@ -24,7 +24,7 @@ func GetNumberVal(ctx context.Context, pool *pgxpool.Conn, setting_code string) 
 	row := pool.QueryRow(ctx, query, setting_code)
 	err := row.Scan(&numberVal)
 	if err != nil {
-		return numberVal, fmt.Errorf("unable to scan row: %w", err)
+		return numberVal, err
 	}
 	return numberVal, nil
 }
@@ -35,7 +35,7 @@ func GetStringVal(ctx context.Context, pool *pgxpool.Conn, setting_code string) 
 	row := pool.QueryRow(ctx, query, setting_code)
 	err := row.Scan(stringVal)
 	if err != nil {
-		return stringVal, fmt.Errorf("unable to scan row: %w", err)
+		return stringVal, err
 	}
 	return stringVal, nil
 }
@@ -46,7 +46,7 @@ func GetDateVal(ctx context.Context, pool *pgxpool.Conn, setting_code string) (t
 	row := pool.QueryRow(ctx, query, setting_code)
 	err := row.Scan(dateVal)
 	if err != nil {
-		return dateVal, fmt.Errorf("unable to scan row: %w", err)
+		return dateVal, err
 	}
 	return dateVal, nil
 }
@@ -59,7 +59,7 @@ func GetJSONVal(ctx context.Context, pool *pgxpool.Conn, setting_code string) ([
 	row := pool.QueryRow(ctx, query, setting_code)
 	err := row.Scan(&jsonVal)
 	if err != nil {
-		return nil, fmt.Errorf("unable to scan row: %w", err)
+		return nil, err
 	}
 	return jsonVal, nil
 }
@@ -72,46 +72,52 @@ func LoadSettings(ctx context.Context) bool {
 	)
 	conn, err := db.PGPool.Acquire(ctx)
 	defer conn.Release()
+	if err != nil {
+		slog.Logger.Error("DB acquire error:", err.Error())
+	}
 
 	if SessionTimeHour, err = GetNumberVal(ctx, conn, "session_time_hour"); err != nil {
-		fmt.Println("Error load session_time_hour")
+		slog.Logger.Error("Error load session_time_hour:", err.Error())
 		ok = false
 	}
 	if val, err := GetNumberVal(ctx, conn, "time_keyboar_width"); err != nil {
-		fmt.Println("Error load time_keyboar_width")
+		slog.Logger.Error("Error load time_keyboar_width:", err.Error())
 		ok = false
 	} else {
 		TimeKeyboarWidth = int(val)
 	}
 	if val, err := GetNumberVal(ctx, conn, "days_in_schedule"); err != nil {
-		fmt.Println("Error load days_in_schedule")
+		slog.Logger.Error("Error load days_in_schedule:", err.Error())
 		ok = false
 	} else {
 		DaysInSchedule = int(val)
 	}
-
 	if jsonVal, err = GetJSONVal(ctx, conn, "start_hour_schedule"); err != nil {
-		fmt.Println("Error load start_hour_schedule")
+		slog.Logger.Error("Error load start_hour_schedule:", err.Error())
 		ok = false
 	} else {
 		if err := json.Unmarshal(jsonVal, &StartHourSchedule); err != nil {
-			fmt.Println("Error load start_hour_schedule")
+			slog.Logger.Error("Error unmarshal start_hour_schedule:", err.Error())
+			ok = false
 		}
 	}
 	if jsonVal, err = GetJSONVal(ctx, conn, "end_hour_schedule"); err != nil {
-		fmt.Println("Error load end_hour_schedule")
+		slog.Logger.Error("Error load end_hour_schedule:", err.Error())
 		ok = false
 	} else {
 		if err := json.Unmarshal(jsonVal, &EndHourSchedule); err != nil {
-			fmt.Println("Error load start_hour_schedule")
+			slog.Logger.Error("Error unmarshal start_hour_schedule:", err.Error())
+			ok = false
 		}
 	}
 	return ok
 }
 
-func init() {
+func InitSettings() {
 	if ok := LoadSettings(context.Background()); !ok {
-		fmt.Println("Load setting error!")
+		slog.Logger.Error("Load setting error!")
+	} else {
+		slog.Logger.Info("Load setting done!")
 	}
 	//fmt.Print(strconv.FormatFloat(SessionTimeHour, 'g', -1, 64))
 	//if val, err := json.Marshal(StartHourScheduler); err == nil {

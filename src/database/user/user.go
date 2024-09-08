@@ -3,7 +3,7 @@ package user
 import (
 	"context"
 	"github.com/jackc/pgx/v5"
-	db "go_telegram_bot/database"
+	db "go_telegram_bot/src/database"
 )
 
 type User struct {
@@ -14,7 +14,7 @@ type User struct {
 	Phone     string
 }
 
-func InsertUser(ctx context.Context, id int64, userName string, firstName string, lastName string, phone string) error {
+func Insert(ctx context.Context, id int64, userName string, firstName string, lastName string, phone string) error {
 	conn, err := db.PGPool.Acquire(ctx)
 	defer conn.Release()
 	if err != nil {
@@ -31,6 +31,25 @@ func InsertUser(ctx context.Context, id int64, userName string, firstName string
 	}
 	_, err = conn.Exec(ctx, query, args)
 	return nil
+}
+
+func IsExists(ctx context.Context, user_name string) (bool, error) {
+	var userCnt int
+	conn, err := db.PGPool.Acquire(ctx)
+	defer conn.Release()
+	if err != nil {
+		return false, err
+	}
+	query := "select count(id) from go_bot.user where user_name=$1"
+	row := conn.QueryRow(ctx, query, user_name)
+	if err := row.Scan(&userCnt); err != nil {
+		return false, err
+	}
+	if userCnt > 0 {
+		return true, nil
+	} else {
+		return false, nil
+	}
 }
 
 func Get(ctx context.Context, id int) (User, error) {

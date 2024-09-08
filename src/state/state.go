@@ -2,7 +2,7 @@ package state
 
 import (
 	"context"
-	redis "go_telegram_bot/database/redis"
+	"go_telegram_bot/src/redis"
 )
 
 func Set(ctx context.Context, state_key string, idUser string, value string) {

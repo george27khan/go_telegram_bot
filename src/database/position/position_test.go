@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/stretchr/testify/assert"
-	db "go_telegram_bot/database"
+	db "go_telegram_bot/src/database"
 	"os"
 	"path"
 	"runtime"
