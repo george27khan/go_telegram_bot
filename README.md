@@ -24,7 +24,7 @@
 
 Для корректной работы миграций нужно по необходимости внести правки в файл [tern.conf](https://github.com/george27khan/go_telegram_bot/blob/main/tern.conf)  
 Чтобы запускать миграцию из консоли необходимо прописать перменные окружения
-
+    go install github.com/jackc/tern/v2@latest
     TERN_CONFIG={путь до проекта}
     TERN_MIGRATIONS={путь до проекта}\database\migration
 

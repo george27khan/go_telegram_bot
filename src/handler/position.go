@@ -6,7 +6,7 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/go-telegram/ui/keyboard/inline"
-	pstn "go_telegram_bot/src/database/position"
+	pstn "go_telegram_bot/internal/infrastructure/repository/postgres/position"
 	"go_telegram_bot/src/state"
 	"strconv"
 	"strings"

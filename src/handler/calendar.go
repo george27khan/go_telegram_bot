@@ -7,10 +7,10 @@ import (
 	"github.com/go-telegram/bot/models"
 	"github.com/go-telegram/ui/datepicker"
 	"github.com/go-telegram/ui/keyboard/inline"
+	schdlr "go_telegram_bot/internal/infrastructure/repository/postgres/schedule"
+	sttng "go_telegram_bot/internal/infrastructure/repository/postgres/setting"
 	"go_telegram_bot/src/Petrovich"
 	emp "go_telegram_bot/src/database/employee"
-	schdlr "go_telegram_bot/src/database/schedule"
-	sttng "go_telegram_bot/src/database/setting"
 	"go_telegram_bot/src/slider_cust"
 	"strconv"
 	"time"
@@ -30,8 +30,7 @@ func CalendarHandler(ctx context.Context, b *bot.Bot, mes *models.Message, _ []b
 	//	makeTime(2019, 12, 28),
 	//	makeTime(2019, 12, 29),
 	//}
-	dateFrom := time.Now()
-	dateTo := dateFrom.AddDate(0, 0, sttng.DaysInSchedule)
+
 	opts := []datepicker.Option{
 		datepicker.CurrentDate(dateFrom),
 		datepicker.From(dateFrom),

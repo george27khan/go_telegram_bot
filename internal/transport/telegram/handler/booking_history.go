@@ -5,18 +5,39 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/go-telegram/ui/keyboard/inline"
-	sched "go_telegram_bot/internal/infrastructure/repository/postgres/schedule"
+	"go_telegram_bot/internal/domain/entity"
 	"go_telegram_bot/src/Petrovich"
-	emp "go_telegram_bot/src/database/employee"
+	"log/slog"
+	"time"
 )
 
-// entryHandler функция вывода меню просмотра записей
-func entryHandler(ctx context.Context, b *bot.Bot, mes *models.Message, _ []byte) {
+type SchedulerEmployeeHandler struct {
+	//CalendarHandler CalendarHandler
+}
+
+type BookingHistiryUseCase interface {
+	GetUserBooking(ctx context.Context, id entity.ClientID) (dateFrom time.Time, dateTo time.Time, err error)
+	GetUserBookingHist(ctx context.Context, id entity.ClientID) (dateFrom time.Time, dateTo time.Time, err error)
+}
+
+type BookingHistiryHandler struct {
+	BookingHistiryUseCase BookingHistiryUseCase
+	logger                *slog.Logger
+}
+
+func NewBookingHistiryHandler(bookingHistiryUseCase BookingHistiryUseCase, logger *slog.Logger) BookingHistiryHandler {
+	return BookingHistiryHandler{
+		BookingHistiryUseCase: bookingHistiryUseCase,
+		logger:                logger,
+	}
+}
+
+func (bh *BookingHistiryHandler) Get(ctx context.Context, b *bot.Bot, mes *models.Message, _ []byte) {
 	kb := inline.New(b).
 		Row().
-		Button("Текущая запись", []byte(""), actualEntryHandler).
+		Button("Текущая запись", []byte(""), bh.actualEntryHandler).
 		Row().
-		Button("История записей", []byte(""), histEntryHandler).
+		Button("История записей", []byte(""), bh.histEntryHandler).
 		Row().
 		Button("⬅️ Назад", []byte(""), BackStartHandler)
 
@@ -29,7 +50,7 @@ func entryHandler(ctx context.Context, b *bot.Bot, mes *models.Message, _ []byte
 }
 
 // actualEntryHandler функция вывода актуальной записи
-func actualEntryHandler(ctx context.Context, b *bot.Bot, mes *models.Message, _ []byte) {
+func (bh *BookingHistiryHandler) actualEntryHandler(ctx context.Context, b *bot.Bot, mes *models.Message, _ []byte) {
 	schedule, err := sched.GetByUser(ctx, mes.Chat.ID)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
@@ -58,7 +79,7 @@ func actualEntryHandler(ctx context.Context, b *bot.Bot, mes *models.Message, _ 
 }
 
 // histEntryHandler функция вывод истории записей
-func histEntryHandler(ctx context.Context, b *bot.Bot, mes *models.Message, _ []byte) {
+func (bh *BookingHistiryHandler) histEntryHandler(ctx context.Context, b *bot.Bot, mes *models.Message, _ []byte) {
 	var (
 		res string
 	)
