@@ -3,8 +3,9 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"log/slog"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type DB struct {
@@ -23,7 +24,7 @@ func NewPostgresPool(ctx context.Context) (*pgxpool.Pool, error) {
 	pass := "postgres"
 	db := "postgres"
 	host := "localhost"
-	port := "5432"
+	port := "50270"
 	connString := fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		user, pass, host, port, db,

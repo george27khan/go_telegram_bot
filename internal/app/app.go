@@ -3,8 +3,12 @@ package app
 import (
 	"context"
 	"fmt"
-	"github.com/go-telegram/bot"
-	"github.com/joho/godotenv"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"go_telegram_bot/internal/domain/entity"
 	"go_telegram_bot/internal/infrastructure/repository/postgres"
 	repCli "go_telegram_bot/internal/infrastructure/repository/postgres/client"
@@ -18,20 +22,16 @@ import (
 	"go_telegram_bot/internal/usecase/setting"
 	"go_telegram_bot/internal/usecase/start"
 	"go_telegram_bot/internal/usecase/state"
-	"log"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
+
+	"github.com/go-telegram/bot"
+	"github.com/joho/godotenv"
 )
 
-var (
-	botToken string
-)
+var botToken string
 
 func loadEnv() {
 	// loads DB settings from .env into the system
-	if err := godotenv.Load("./.env"); err != nil {
+	if err := godotenv.Load("d:/workspace/GO/go_telegram_bot/.env"); err != nil {
 		log.Print("No .env file found")
 	}
 	botToken = os.Getenv("TELEGRAM_BOT_TOKEN")
@@ -40,7 +40,7 @@ func loadEnv() {
 func Run() {
 	loadEnv()
 	slog := logger.InitLogging()
-	//глобальный контекст для отмены фоновых загрузок при остановке приложения
+	// глобальный контекст для отмены фоновых загрузок при остановке приложения
 	rootCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	defer stop()
 
@@ -68,7 +68,7 @@ func Run() {
 
 	startH := handler.NewStartHandler(startUC, stateUC, router, slog)
 	opts := []bot.Option{
-		//bot.WithDefaultHandler(h.DefaultHandler),
+		// bot.WithDefaultHandler(h.DefaultHandler),
 	}
 
 	b, err := bot.New(botToken, opts...)
@@ -79,7 +79,7 @@ func Run() {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/start", bot.MatchTypeExact, startH.Start)
 	b.Start(rootCtx)
 
-	//gracefull shutdown
+	// gracefull shutdown
 	<-rootCtx.Done() // ожидание сигнала завершения
 	slog.Info("Start gracefull shutdown ...")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
