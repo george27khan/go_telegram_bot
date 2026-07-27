@@ -3,14 +3,17 @@ package handler
 import (
 	"context"
 	"fmt"
+	"go_telegram_bot/internal/domain/entity"
+	"go_telegram_bot/internal/pkg/slider_cust"
+	"log"
+	"log/slog"
+	"strconv"
+
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/go-telegram/ui/datepicker"
 	"github.com/go-telegram/ui/keyboard/inline"
-	"go_telegram_bot/internal/domain/entity"
-	"go_telegram_bot/internal/pkg/slider_cust"
-	"log/slog"
-	"strconv"
+
 	//"go_telegram_bot/src/Petrovich"
 	"time"
 )
@@ -47,6 +50,7 @@ func getStrSched(startTime time.Time, endTime time.Time) string {
 	return startTime.Format("15:04") + "-" + endTime.Format("15:04")
 }
 
+// GetCalendarn отрисовка в меню календаря для записи
 func (bh *BookingHandler) GetCalendar(ctx context.Context, b *bot.Bot, mes *models.Message, _ []byte) {
 	dateFrom, dateTo, err := bh.BookingUseCase.GetCalendarDays(ctx)
 	if err != nil {
@@ -75,9 +79,11 @@ func (bh *BookingHandler) GetCalendar(ctx context.Context, b *bot.Bot, mes *mode
 	})
 }
 
+// getTime отрисовка меню для выбора времени записи по определенному дню
 func (bh *BookingHandler) getTime(ctx context.Context, b *bot.Bot, mes *models.Message, date time.Time) {
 	kbTime := inline.New(b)
 	timeFrom, timeTo, err := bh.BookingUseCase.GetDayTimes(ctx, date)
+	log.Println("timeFrom, timeTo",timeFrom, timeTo)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID:    mes.Chat.ID,
@@ -132,6 +138,8 @@ func (bh *BookingHandler) getTime(ctx context.Context, b *bot.Bot, mes *models.M
 	})
 }
 
+
+// getEmployee отрисовка меню для выбора сотрудника для записи
 func (bh *BookingHandler) getEmployee(ctx context.Context, b *bot.Bot, mes *models.Message, data []byte) {
 	var (
 		slides []slider_cust.Slide
@@ -152,7 +160,7 @@ func (bh *BookingHandler) getEmployee(ctx context.Context, b *bot.Bot, mes *mode
 	if err != nil {
 		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID:    mes.Chat.ID,
-			Text:      highlightTxt("В процессе получения свободных сотрудников произошла ощибка: " + err.Error()),
+			Text:      highlightTxt("В процессе получения свободных сотрудников произошла ошибка: " + err.Error()),
 			ParseMode: models.ParseModeHTML,
 		})
 	}
@@ -167,7 +175,7 @@ func (bh *BookingHandler) getEmployee(ctx context.Context, b *bot.Bot, mes *mode
 	}
 
 	opts := []slider_cust.Option{
-		slider_cust.OnSelect("Выбрать", true, bh.saveEmployee),
+		slider_cust.OnSelect("Выбрать", true, bh.saveBooking),
 		//slider_cust.OnCancel("Назад", true, ),
 	}
 	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
@@ -183,7 +191,9 @@ func (bh *BookingHandler) getEmployee(ctx context.Context, b *bot.Bot, mes *mode
 	//schedTimeCash[mes.Chat.ID] = &schdlr.Schedule{IdUser: mes.Chat.ID, VisitDt: schedTime}
 }
 
-func (bh *BookingHandler) saveEmployee(ctx context.Context, b *bot.Bot, mes *models.Message, item int, data []byte) {
+
+// saveBooking бронирование записи
+func (bh *BookingHandler) saveBooking(ctx context.Context, b *bot.Bot, mes *models.Message, item int, data []byte) {
 	idEmp, err := strconv.Atoi(string(data))
 	fmt.Println("item", item)
 	if err != nil {
